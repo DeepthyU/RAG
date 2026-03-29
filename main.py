@@ -98,7 +98,7 @@ def build_index(vector_store: ChromaVectorStore) -> VectorStoreIndex:
         show_progress=True,
     )
 
-    console.print("[green]✓ Index built and persisted to storage/[/]")
+    console.print("[green]Index built and persisted to storage/[/]")
     return index
 
 

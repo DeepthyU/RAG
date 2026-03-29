@@ -1,26 +1,62 @@
 # RAG Document Chat
 
-Chat with your PDF and DOCX files using LlamaIndex, ChromaDB, and OpenAI.
+Chat with your PDF and DOCX files using a fully local stack — no API keys required.
+
+**Stack:** LlamaIndex · ChromaDB · Ollama (llama3.2 + nomic-embed-text)
+
 ![img.png](img.png)
 
-## Setup
+---
 
-### 1. Install dependencies
+## Prerequisites
+
+- Python 3.10+
+- [Ollama](https://ollama.com) installed and running
+
+
+### 0. Download and install Ollama
+
+1. Go to [https://ollama.com/download](https://ollama.com/download)
+2. Click **Download for Windows**
+3. Run the downloaded installer (`OllamaSetup.exe`)
+4. Follow the on-screen prompts — no special options needed
+
+> Ollama installs silently and registers itself as a background service. After installation, you'll see the 🦙 Ollama icon in your system tray.
+
+### 1. Start Ollama and pull the required models
+
+After installing Ollama, it runs automatically as a background service. If it's not running, start it manually:
 
 ```bash
-pip install llama-index llama-index-vector-stores-chroma llama-index-embeddings-openai llama-index-llms-openai llama-index-readers-file chromadb pypdf python-docx python-dotenv rich
+ollama serve
 ```
 
-### 2. Configure your API key
+Then pull the required models (one-time setup):
+
+```bash
+ollama pull llama3.2
+ollama pull nomic-embed-text
+```
+
+### 2. Clone the repo and install dependencies
+
+```bash
+git clone https://github.com/DeepthyU/RAG.git
+cd RAG
+pip install -r requirements.txt
+```
+
+### 3. Configure environment
 
 ```bash
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
 ```
 
-### 3. Add your documents
+The defaults work out of the box. Edit `.env` only if you need to change models or Ollama's URL.
 
-Drop any `.pdf` or `.docx` files into the `docs/` folder:
+### 4. Add your documents
+
+Drop `.pdf` or `.docx` files into the `docs/` folder:
 
 ```
 docs/
@@ -29,41 +65,41 @@ docs/
   research_paper.pdf
 ```
 
-### 4. Run
+### 5. Run
 
 ```bash
 python main.py
 ```
 
-On first run the app will:
+On **first run** the app will:
 1. Load and chunk all documents in `docs/`
-2. Embed the chunks using OpenAI embeddings
+2. Generate embeddings using `nomic-embed-text` via Ollama
 3. Persist the vector index to `storage/` (ChromaDB on disk)
 4. Launch an interactive chat loop
 
-On subsequent runs it loads the persisted index directly — no re-embedding needed.
+On **subsequent runs** it loads the persisted index directly — no re-embedding needed.
 
 ---
 
-## Commands in chat
+## Chat commands
 
 | Input | Effect |
 |-------|--------|
 | Any question | Query your documents |
-| `sources` | Toggle display of source chunks and scores |
+| `sources` | Toggle display of source chunks and relevance scores |
 | `exit` / `quit` | Exit the app |
 
 ---
 
 ## Re-indexing
 
-When you add new documents, re-ingest everything:
+When you add new documents:
 
 ```bash
-# Add to existing index
+# Re-index everything
 python ingest.py
 
-# Wipe and rebuild from scratch
+# Wipe the existing index and rebuild from scratch
 python ingest.py --reset
 ```
 
@@ -73,23 +109,23 @@ python ingest.py --reset
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | required | Your OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | LLM for answering |
-| `EMBED_MODEL` | `text-embedding-3-small` | Embedding model |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `LLM_MODEL` | `llama3.2` | LLM used for answering questions |
+| `EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `CHUNK_SIZE` | `512` | Tokens per chunk |
 | `CHUNK_OVERLAP` | `64` | Overlap between chunks |
-| `TOP_K` | `5` | Retrieved chunks per query |
+| `TOP_K` | `5` | Number of retrieved chunks per query |
 
 ---
 
 ## Project structure
 
 ```
-rag_app/
-├── docs/           ← Put your PDFs and DOCX files here
-├── storage/        ← ChromaDB vector index (auto-created)
-├── main.py         ← Chat application entry point
-├── ingest.py       ← Standalone re-indexing script
+RAG/
+├── docs/            <- Put your PDFs and DOCX files here
+├── storage/         <- ChromaDB vector index (auto-created, gitignored)
+├── main.py          <- Chat application entry point
+├── ingest.py        <- Standalone re-indexing script
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -99,31 +135,15 @@ rag_app/
 
 ## Swapping the LLM
 
-LlamaIndex supports many LLM backends. To use Claude instead of OpenAI:
+To use a different Ollama model, update `.env`:
+
+```env
+LLM_MODEL=mistral
+EMBED_MODEL=nomic-embed-text
+```
+
+Then pull the model first:
 
 ```bash
-pip install llama-index-llms-anthropic
-```
-
-Then in `main.py`, replace:
-```python
-from llama_index.llms.openai import OpenAI
-Settings.llm = OpenAI(model="gpt-4o-mini")
-```
-with:
-```python
-from llama_index.llms.anthropic import Anthropic
-Settings.llm = Anthropic(model="claude-sonnet-4-20250514")
-```
-
-For a fully local setup (no API costs), use Ollama:
-```bash
-pip install llama-index-llms-ollama llama-index-embeddings-ollama
-```
-
-```python
-from llama_index.llms.ollama import Ollama
-from llama_index.embeddings.ollama import OllamaEmbedding
-Settings.llm = Ollama(model="llama3.2")
-Settings.embed_model = OllamaEmbedding(model_name="nomic-embed-text")
+ollama pull mistral
 ```
