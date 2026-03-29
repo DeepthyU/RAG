@@ -19,8 +19,8 @@ from rich.console import Console
 
 from llama_index.core import Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 load_dotenv()
@@ -28,6 +28,9 @@ load_dotenv()
 DOCS_DIR = Path("docs")
 STORAGE_DIR = Path("storage")
 COLLECTION_NAME = "rag_documents"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 
 console = Console()
 
@@ -41,16 +44,12 @@ def main():
     )
     args = parser.parse_args()
 
-    if not os.getenv("OPENAI_API_KEY"):
-        console.print("[bold red]Error:[/] OPENAI_API_KEY not set.")
-        sys.exit(1)
-
     if args.reset and STORAGE_DIR.exists():
         shutil.rmtree(STORAGE_DIR)
         console.print("[yellow]Existing index wiped.[/]")
 
-    Settings.llm = OpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
-    Settings.embed_model = OpenAIEmbedding(model=os.getenv("EMBED_MODEL", "text-embedding-3-small"))
+    Settings.llm = Ollama(model=LLM_MODEL, base_url=OLLAMA_BASE_URL)
+    Settings.embed_model = OllamaEmbedding(model_name=EMBED_MODEL, base_url=OLLAMA_BASE_URL)
     Settings.node_parser = SentenceSplitter(
         chunk_size=int(os.getenv("CHUNK_SIZE", 512)),
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", 64)),
@@ -80,7 +79,7 @@ def main():
         show_progress=True,
     )
 
-    console.print(f"[green]✓ Done. {collection.count()} vectors stored in storage/[/]")
+    console.print(f"[green]Done. {collection.count()} vectors stored in storage/[/]")
 
 
 if __name__ == "__main__":
